@@ -25,8 +25,8 @@ class DataAggregator:
         attendance_save.loc['aggregations'] = (
             pd.Series(attendance_save.mean(), dtype=float, name='aggregations'))
 
-        with open(f'agregated_meetings_attendace.json', 'w+', encoding='utf-8') as f:
+        with open(f'aggregated_meetings_attendace.json', 'w+', encoding='utf-8') as f:
             json.dump(attendance_save.to_dict(), f)
-        attendance_save.to_excel("output.xlsx")
+        attendance_save.to_excel("aggregated_meetings_attendace.xlsx")
 
 
