@@ -1,1 +1,5 @@
 main.py
+.idea\*
+output.xlsx
+src/agregated_meetings_attendace.json
+agregated_meetings_attendace.json
