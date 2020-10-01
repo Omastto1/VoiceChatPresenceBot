@@ -1,11 +1,13 @@
 from datetime import datetime
 from discord.ext import commands, tasks
+from src.DataAggregator import DataAggregator
 
 
 class VoiceChatPresenceBot(commands.Cog):
     def __init__(self, bot, voice_channel_id):
         self.bot = bot
         self.voice_channel_id = voice_channel_id
+        self.dataAggregator = DataAggregator()
         self.channel_log_id = 760601431925063694
         self.counter = 0
         self.meeting_date = self.meeting_start = self.meeting_end = self.attendance = self.log_channel = self.channel = \
@@ -37,6 +39,7 @@ class VoiceChatPresenceBot(commands.Cog):
 
     @commands.command(pass_context=True)
     async def start(self, ctx):
+        self.counter = 0
         now = datetime.now()
 
         self.meeting_date = now.strftime("%d/%m/%Y")
@@ -59,3 +62,7 @@ class VoiceChatPresenceBot(commands.Cog):
 
         await self.log_channel.send(self.meeting_end)
         await self.log_channel.send(self.attendance)
+
+        self.dataAggregator.store_attendance(self.meeting_date, self.meeting_start, self.meeting_end, self.attendance,
+                                             self.counter)
+        self.dataAggregator.save_data()
