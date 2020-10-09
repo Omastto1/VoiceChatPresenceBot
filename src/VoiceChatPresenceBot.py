@@ -8,83 +8,165 @@ _loop = asyncio.get_event_loop()
 
 
 class VoiceChatPresenceBot(commands.Cog):
-    def __init__(self, bot, voice_channel_id):
+    def __init__(self, bot, groups):
+        """
+
+        :param bot: discord Bot
+        :param groups: dict with group names and their respective voice channel ids
+        """
         self.bot = bot
-        self.voice_channel_id = voice_channel_id
-        self.dataAggregator = DataAggregator()
-        self.channel_log_id = 763106308458807304
-        self.counter = 0
+        self.dataAggregator = DataAggregator(groups.keys())
         self.ids = {}
-        self.all_time_attendees = set()
-        self.attendance = {}
-        self.meeting_date = self.meeting_start = self.meeting_end = self.log_channel = self.channel = \
-            self._last_member = self.author = None
+        self._last_member = self.main_author = None
+        self.groups = groups
+        for group in self.groups:
+            groups[group]['name'] = group
+            group = groups[group]
+            group['counter'] = 0
+            group['is_running'] = False
+            group['attendance'] = {}
+            group['all_time_attendees'] = set()
+            group['meeting_date'] = group['meeting_start'] = group['meeting_end'] = group['author'] = None
 
     @commands.Cog.listener()
     async def on_ready(self):
         print("Ready!")
         print(f'Logged in as ---> {self.bot.user}')
         print(f'Id: {self.bot.user.id}')
-        self.log_channel = self.bot.get_channel(self.channel_log_id)
 
-    def get_voice_channel_members(self):
-        voice_channel = self.bot.get_channel(self.voice_channel_id)
+    def get_voice_channel_members(self, channel_id):
+        """Method returns list of members of channel with given id
+
+        :param
+            channel_id: id of channel
+        :return:
+            list of discord.Members in channel if there are some and channel exists
+        """
+        voice_channel = self.bot.get_channel(channel_id)
         if voice_channel:
             return voice_channel.members
         if not voice_channel:
             return []
 
-    def notify_absents(self, attendees):
-        all_attendees = np.array(list(self.all_time_attendees))
+    def notify_absents(self, attendees, group_name):
+        """Notifies absent attendees by msg
+
+        :param attendees: list of Discord.members in voice chat
+        :param group_name: name of voice chat
+        """
+        all_attendees = np.array(list(self.groups[group_name]['all_time_attendees']))
         absent_users = all_attendees[np.in1d(all_attendees, attendees, invert=True)]
         for user in absent_users:
             disc_user = self.bot.get_user(self.ids[user])
             asyncio.run_coroutine_threadsafe(disc_user.send("JE SCHUZE TY MAGORE, UZ SI TAM MEL 3 MINUTY BEJT!"), _loop)
 
-    def record_meeting_activity(self):
-        self.counter += 1
-        voice_channel_members = self.get_voice_channel_members()
+    def record_meeting_activity(self, group):
+        """Record presence/absence of users in voice chat meeting
+
+        :param group: dict with group description
+        :return: log to be send to author of meeting recording
+        """
+        group['counter'] += 1
+        voice_channel_members = self.get_voice_channel_members(group['voice_channel_id'])
         attendees = [attendee.name for attendee in voice_channel_members]
         self.ids = {**self.ids, **{f'{attendee.name}': attendee.id for attendee in voice_channel_members}}
         for attendee in attendees:
-            self.attendance[attendee] = self.attendance[attendee] + 1 if attendee in self.attendance else 1
-            self.all_time_attendees.add(attendee)
+            group['attendance'][attendee] = group['attendance'][attendee] + 1 if attendee in group['attendance'] else 1
+            group['all_time_attendees'].add(attendee)
 
-        self.notify_absents(attendees)
+        self.notify_absents(attendees, group['name'])
 
-        return self.author.send(self.attendance)
+        return group['author'].send(f"{group['name']} attendance: {group['attendance']}")
 
     @tasks.loop(seconds=10)
     async def my_background_task(self):
-        await self.record_meeting_activity()
+        """Run members presence each x seconds/minutes
+
+        """
+        for group in self.groups:
+            group = self.groups[group]
+            print(group)
+            if group['is_running']:
+                await self.record_meeting_activity(group)
 
     @commands.command(pass_context=True)
-    async def start(self, ctx):
-        self.author = ctx.author
-        self.counter = 0
-        now = datetime.now()
+    async def start(self, ctx, *args):
+        """Starts members presence
 
-        self.meeting_date = now.strftime("%d/%m/%Y")
-        self.meeting_start = now.strftime("%H:%M:%S")
-        self.meeting_end = None
-        self.attendance = dict()
+        """
+        author = ctx.author
+        if len(args) == 0:
+            print("Missing group name argument")
+            await author.send("Missing group name argument")
+        else:
+            group_name = args[0]
+            if group_name in self.groups.keys():
+                if self.groups[group_name]['is_running']:
+                    print(f"{group_name} is already running")
+                    return
 
-        await self.author.send(self.meeting_date)
-        await self.author.send(self.meeting_start)
+                print(f'Starting {group_name} meeting!')
+                group = self.groups[group_name]
+                group['author'] = author
+                group['is_running'] = True
+                print(f"zapinam is running: {group['is_running']}")
+                group['counter'] = 0
+                print(f"zapinam counter: {group['counter']}")
+                now = datetime.now()
 
-        self.my_background_task.start()
+                group['meeting_date'] = now.strftime("%d/%m/%Y")
+                group['meeting_start'] = now.strftime("%H:%M:%S")
+                group['meeting_end'] = None
+                group['attendance'] = dict()
+
+                await group['author'].send(f'Starting {group_name} meeting!')
+                await group['author'].send(group['meeting_date'])
+                await group['author'].send(group['meeting_start'])
+
+                if not self.my_background_task.is_running():
+                    self.my_background_task.start()
+                else:
+                    print("background task is already started")
+            else:
+                await author.send(f'Wrong group name: {group_name}')
 
     @commands.command(pass_context=True)
-    async def stop(self, ctx):
-        self.my_background_task.cancel()
+    async def stop(self, ctx, *args):
+        """Stops members presence
 
-        now = datetime.now()
+        """
+        author = ctx.author
+        if len(args) == 0:
+            print("Missing group name argument")
+            await author.send("Missing group name argument")
+        else:
+            group_name = args[0]
+            if group_name in self.groups.keys():
+                if not self.groups[group_name]['is_running']:
+                    print(f"{group_name} is already stopped")
+                    return
 
-        self.meeting_end = now.strftime("%H:%M:%S")
+                print(f'Stopping {group_name} meeting!')
+                group = self.groups[group_name]
+                group['is_running'] = False
+                print(f"vypinam is running: {group['is_running']}")
 
-        await self.author.send(self.meeting_end)
-        await self.author.send(self.attendance)
+                is_running = np.array([self.groups[temp_group_name]['is_running'] for temp_group_name in self.groups.keys()])
+                print(is_running)
+                print(np.any(is_running))
+                if np.any(is_running):
+                    print("?????")
+                else:
+                    self.my_background_task.cancel()
 
-        self.dataAggregator.store_attendance(self.meeting_date, self.meeting_start, self.meeting_end, self.attendance,
-                                             self.counter)
-        self.dataAggregator.save_data()
+                now = datetime.now()
+
+                group['meeting_end'] = now.strftime("%H:%M:%S")
+
+                await group['author'].send(f'Ending {group_name} meeting!')
+                await group['author'].send(group['meeting_end'])
+                await group['author'].send(group['attendance'])
+
+                self.dataAggregator.update_attendance(group)
+            else:
+                await author.send(f'Wrong group name: {group_name}')
