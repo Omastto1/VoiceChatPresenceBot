@@ -1,6 +1,10 @@
+import asyncio
+import numpy as np
 from datetime import datetime
 from discord.ext import commands, tasks
 from src.DataAggregator import DataAggregator
+
+_loop = asyncio.get_event_loop()
 
 
 class VoiceChatPresenceBot(commands.Cog):
@@ -8,9 +12,12 @@ class VoiceChatPresenceBot(commands.Cog):
         self.bot = bot
         self.voice_channel_id = voice_channel_id
         self.dataAggregator = DataAggregator()
-        self.channel_log_id = 760601431925063694
+        self.channel_log_id = 763106308458807304
         self.counter = 0
-        self.meeting_date = self.meeting_start = self.meeting_end = self.attendance = self.log_channel = self.channel = \
+        self.ids = {}
+        self.all_time_attendees = set()
+        self.attendance = {}
+        self.meeting_date = self.meeting_start = self.meeting_end = self.log_channel = self.channel = \
             self._last_member = None
 
     @commands.Cog.listener()
@@ -27,18 +34,33 @@ class VoiceChatPresenceBot(commands.Cog):
         if not voice_channel:
             return []
 
+    def notify_absents(self, attendees):
+        all_attendees = np.array(list(self.all_time_attendees))
+        absent_users = all_attendees[np.in1d(all_attendees, attendees, invert=True)]
+        for user in absent_users:
+            disc_user = self.bot.get_user(self.ids[user])
+            asyncio.run_coroutine_threadsafe(disc_user.send("JE SCHUZE TY MAGORE, UZ SI TAM MEL 3 MINUTY BEJT!"), _loop)
+
+    def record_meeting_activity(self):
+        self.counter += 1
+        voice_channel_members = self.get_voice_channel_members()
+        attendees = [attendee.name for attendee in voice_channel_members]
+        self.ids = {**self.ids, **{f'{attendee.name}': attendee.id for attendee in voice_channel_members}}
+        for attendee in attendees:
+            self.attendance[attendee] = self.attendance[attendee] + 1 if attendee in self.attendance else 1
+            self.all_time_attendees.add(attendee)
+
+        self.notify_absents(attendees)
+
+        return self.author.send(self.attendance)
+
     @tasks.loop(seconds=10)
     async def my_background_task(self):
-        self.counter += 1
-        attendees = self.get_voice_channel_members()
-        for attendee in attendees:
-            self.attendance[attendee.name] = self.attendance[attendee.name] + 1 if attendee.name in self.attendance \
-                else 1
-
-        await self.log_channel.send(self.attendance)
+        await self.record_meeting_activity()
 
     @commands.command(pass_context=True)
     async def start(self, ctx):
+        self.author = ctx.author
         self.counter = 0
         now = datetime.now()
 
@@ -47,8 +69,8 @@ class VoiceChatPresenceBot(commands.Cog):
         self.meeting_end = None
         self.attendance = dict()
 
-        await self.log_channel.send(self.meeting_date)
-        await self.log_channel.send(self.meeting_start)
+        await self.author.send(self.meeting_date)
+        await self.author.send(self.meeting_start)
 
         self.my_background_task.start()
 
@@ -60,8 +82,8 @@ class VoiceChatPresenceBot(commands.Cog):
 
         self.meeting_end = now.strftime("%H:%M:%S")
 
-        await self.log_channel.send(self.meeting_end)
-        await self.log_channel.send(self.attendance)
+        await self.author.send(self.meeting_end)
+        await self.author.send(self.attendance)
 
         self.dataAggregator.store_attendance(self.meeting_date, self.meeting_start, self.meeting_end, self.attendance,
                                              self.counter)
