@@ -18,7 +18,7 @@ class VoiceChatPresenceBot(commands.Cog):
         self.all_time_attendees = set()
         self.attendance = {}
         self.meeting_date = self.meeting_start = self.meeting_end = self.log_channel = self.channel = \
-            self._last_member = None
+            self._last_member = self.author = None
 
     @commands.Cog.listener()
     async def on_ready(self):
