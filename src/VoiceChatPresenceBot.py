@@ -30,6 +30,7 @@ class VoiceChatPresenceBot(commands.Cog):
             group['attendance'] = {}
             group['all_time_attendees'] = set()
             group['meeting_date'] = group['meeting_start'] = group['meeting_end'] = group['author'] = None
+            group['absents_pinged'] = set()
 
     @commands.Cog.listener()
     async def on_ready(self):
@@ -86,8 +87,10 @@ class VoiceChatPresenceBot(commands.Cog):
         all_attendees = np.array(list(self.groups[group_name]['all_time_attendees']))
         absent_users = all_attendees[np.in1d(all_attendees, attendees, invert=True)]
         for user in absent_users:
-            disc_user = self.bot.get_user(self.ids[user])
-            asyncio.run_coroutine_threadsafe(disc_user.send("JE SCHUZE TY MAGORE, UZ SI TAM MEL 3 MINUTY BEJT!"), _loop)
+            if user not in self.groups[group_name]['absents_pinged']:
+                self.groups[group_name]['absents_pinged'].add(user)
+                disc_user = self.bot.get_user(self.ids[user])
+                asyncio.run_coroutine_threadsafe(disc_user.send("JE SCHUZE TY MAGORE, UZ SI TAM MEL 3 MINUTY BEJT!"), _loop)
 
     def record_meeting_activity(self, group):
         """Record presence/absence of users in voice chat meeting
@@ -142,6 +145,7 @@ class VoiceChatPresenceBot(commands.Cog):
                 group = self.groups[group_name]
                 group['author'] = author
                 group['is_running'] = True
+                self.groups[group_name]['absents_pinged'] = set()
                 print(f"zapinam is running: {group['is_running']}")
                 group['counter'] = 0
                 print(f"zapinam counter: {group['counter']}")
