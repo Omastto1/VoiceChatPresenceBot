@@ -15,7 +15,6 @@ class DataAggregator:
 
         :param group_names: list of group names
         """
-        self.meeting_id = 0
         self.group_attendances = {group_name: pd.DataFrame(columns=DATACOLUMNS, dtype=float) for group_name in group_names}
         if not os.path.isdir('./data'):
             os.mkdir('./data')
