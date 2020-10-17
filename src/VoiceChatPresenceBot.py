@@ -86,7 +86,6 @@ class VoiceChatPresenceBot(commands.Cog):
         """
         for group in self.groups:
             group = self.groups[group]
-            print(group)
             if group['is_running']:
                 await self.record_meeting_activity(group)
 
@@ -153,11 +152,8 @@ class VoiceChatPresenceBot(commands.Cog):
                 print(f"vypinam is running: {group['is_running']}")
 
                 is_running = np.array([self.groups[temp_group_name]['is_running'] for temp_group_name in self.groups.keys()])
-                print(is_running)
-                print(np.any(is_running))
-                if np.any(is_running):
-                    print("?????")
-                else:
+
+                if not np.any(is_running):
                     self.my_background_task.cancel()
 
                 now = datetime.now()
