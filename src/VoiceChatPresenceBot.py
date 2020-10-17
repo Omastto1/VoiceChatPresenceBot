@@ -33,9 +33,10 @@ class VoiceChatPresenceBot(commands.Cog):
         print("Ready!")
         print(f'Logged in as ---> {self.bot.user}')
         print(f'Id: {self.bot.user.id}')
+
         all_time_attendees = self.dataAggregator.load_data()
         for group in all_time_attendees:
-            self.groups[group] = all_time_attendees[group]
+            self.groups[group]['all_time_attendees'] = all_time_attendees[group]
 
     def get_voice_channel_members(self, channel_id):
         """Method returns list of members of channel with given id
