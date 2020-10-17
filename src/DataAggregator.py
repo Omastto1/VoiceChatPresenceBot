@@ -78,3 +78,9 @@ class DataAggregator:
         """
         self.store_attendance(group)
         self.save_data(group)
+
+    def update_ids(self, ids):
+        with open(f"data/ids.json", 'w+', encoding='utf-8') as f:
+            json.dump(ids, f)
+        print("Updated dict of ids.")
+
