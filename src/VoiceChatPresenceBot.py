@@ -1,4 +1,5 @@
 import asyncio
+import json
 import numpy as np
 from datetime import datetime
 from discord.ext import commands, tasks
@@ -38,6 +39,8 @@ class VoiceChatPresenceBot(commands.Cog):
         for group in all_time_attendees:
             self.groups[group]['all_time_attendees'] = all_time_attendees[group]
 
+        with open(f"data/ids.json", 'r', encoding='utf-8') as f:
+            self.ids = json.load(f)
     def get_voice_channel_members(self, channel_id):
         """Method returns list of members of channel with given id
 
@@ -73,7 +76,12 @@ class VoiceChatPresenceBot(commands.Cog):
         group['counter'] += 1
         voice_channel_members = self.get_voice_channel_members(group['voice_channel_id'])
         attendees = [attendee.name for attendee in voice_channel_members]
-        self.ids = {**self.ids, **{f'{attendee.name}': attendee.id for attendee in voice_channel_members}}
+
+        new_attendees = {f'{attendee.name}': attendee.id for attendee in voice_channel_members}
+        if new_attendees:
+            self.ids = {**self.ids, **new_attendees}
+            self.dataAggregator.update_ids(self.ids)
+
         for attendee in attendees:
             group['attendance'][attendee] = group['attendance'][attendee] + 1 if attendee in group['attendance'] else 1
             group['all_time_attendees'].add(attendee)
