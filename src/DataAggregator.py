@@ -31,7 +31,12 @@ class DataAggregator:
             meeting[id] = presence/group['counter']
         self.group_attendances[group['name']] = pd.concat([self.group_attendances[group['name']], meeting], ignore_index=True)
 
-    def load_data(self):
+    def load_data(self) -> dict:
+        """Load attendance record from json and add them to given aggregator
+
+        :return: dictionary of all time attendees for each group
+        """
+        all_time_attendees = {}
         for group_name in self.group_attendances:
             file = f"data/{group_name}_aggregated_meetings_attendance.json"
             if os.path.exists(file):
@@ -39,10 +44,19 @@ class DataAggregator:
                     dict_data = json.load(f)
 
                 # converting json dataset from dictionary to dataframe
-                self.group_attendances[group_name] = pd.DataFrame.from_dict(dict_data, orient='columns')
+                df_data = pd.DataFrame.from_dict(dict_data, orient='columns').drop(['aggregations'])
+                self.group_attendances[group_name] = df_data
+
+                # getting column names, removing info data and returning in dict
+                attendees = set(df_data.columns)
+                attendees.difference_update(DATACOLUMNS)
+                all_time_attendees[group_name] = attendees
+
                 print(f'{file} loaded.')
             else:
                 print(f'{file} does not exists.')
+
+        return all_time_attendees
 
     def save_data(self, group):
         """Save aggregator to .json and .xlsx
@@ -64,5 +78,3 @@ class DataAggregator:
         """
         self.store_attendance(group)
         self.save_data(group)
-
-
