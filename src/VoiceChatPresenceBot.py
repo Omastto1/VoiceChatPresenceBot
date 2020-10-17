@@ -1,6 +1,8 @@
 import asyncio
 import json
 import numpy as np
+import discord
+import os
 from datetime import datetime
 from discord.ext import commands, tasks
 from src.DataAggregator import DataAggregator
@@ -41,6 +43,26 @@ class VoiceChatPresenceBot(commands.Cog):
 
         with open(f"data/ids.json", 'r', encoding='utf-8') as f:
             self.ids = json.load(f)
+
+    @commands.command()
+    async def export_xlsx(self, ctx, *args):
+        """Exports xlsx attendance file of given group
+
+        :param *args: has to contain name of group for which export is desired
+        """
+        author = ctx.author
+        if len(args) == 0:
+            print("Missing group name argument")
+            await author.send("Missing group name argument")
+        else:
+            group_name = args[0]
+            file = f"data/{group_name}_aggregated_meetings_attendance.xlsx"
+            if os.path.exists(file):
+                with open(file, 'rb') as f:
+                    await ctx.author.send(file=discord.File(f, f"{group_name}_attendance.xlsx"))
+            else:
+                await author.send(f"Record of **{group_name}**'s attendance does not exist!")
+
     def get_voice_channel_members(self, channel_id):
         """Method returns list of members of channel with given id
 
