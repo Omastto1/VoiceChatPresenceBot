@@ -31,6 +31,19 @@ class DataAggregator:
             meeting[id] = presence/group['counter']
         self.group_attendances[group['name']] = pd.concat([self.group_attendances[group['name']], meeting], ignore_index=True)
 
+    def load_data(self):
+        for group_name in self.group_attendances:
+            file = f"data/{group_name}_aggregated_meetings_attendance.json"
+            if os.path.exists(file):
+                with open(file, 'r', encoding='utf-8') as f:
+                    dict_data = json.load(f)
+
+                # converting json dataset from dictionary to dataframe
+                self.group_attendances[group_name] = pd.DataFrame.from_dict(dict_data, orient='columns')
+                print(f'{file} loaded.')
+            else:
+                print(f'{file} does not exists.')
+
     def save_data(self, group):
         """Save aggregator to .json and .xlsx
 
@@ -40,9 +53,9 @@ class DataAggregator:
         attendance_save.loc['aggregations'] = (
             pd.Series(attendance_save.mean(), dtype=float, name='aggregations'))
 
-        with open(f"data/{group['name']}_aggregated_meetings_attendace.json", 'w+', encoding='utf-8') as f:
+        with open(f"data/{group['name']}_aggregated_meetings_attendance.json", 'w+', encoding='utf-8') as f:
             json.dump(attendance_save.to_dict(), f)
-        attendance_save.to_excel(f"data/{group['name']}_aggregated_meetings_attendace.xlsx")
+        attendance_save.to_excel(f"data/{group['name']}_aggregated_meetings_attendance.xlsx")
 
     def update_attendance(self, group):
         """Update data in aggregator with new row and save them
