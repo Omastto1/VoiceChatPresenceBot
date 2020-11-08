@@ -125,7 +125,7 @@ class VoiceChatPresenceBot(commands.Cog):
             if group['is_running']:
                 await self.record_meeting_activity(group)
 
-    @commands.command(pass_context=True)
+    @commands.command()
     async def start(self, ctx, *args):
         """Starts members presence
 
@@ -167,7 +167,7 @@ class VoiceChatPresenceBot(commands.Cog):
             else:
                 await author.send(f'Wrong group name: {group_name}')
 
-    @commands.command(pass_context=True)
+    @commands.command()
     async def stop(self, ctx, *args):
         """Stops members presence
 
