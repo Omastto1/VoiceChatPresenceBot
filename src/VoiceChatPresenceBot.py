@@ -32,11 +32,15 @@ class VoiceChatPresenceBot(commands.Cog):
             group['meeting_date'] = group['meeting_start'] = group['meeting_end'] = group['author'] = None
             group['absents_pinged'] = set()
 
+            group['members'] = set()
+
     @commands.Cog.listener()
     async def on_ready(self):
         print("Ready!")
         print(f'Logged in as ---> {self.bot.user}')
         print(f'Id: {self.bot.user.id}')
+
+        self.eforce_server = discord.utils.get(self.bot.guilds, name='eForce')
 
         all_time_attendees = self.dataAggregator.load_data()
         for group in all_time_attendees:
@@ -214,3 +218,24 @@ class VoiceChatPresenceBot(commands.Cog):
         if isinstance(error, commands.MissingAnyRole):
             await ctx.channel.send("I do not answer to peasants like you.\n"
                                    "Came back when you become **Illuminati**, **Vedouci** or **Správce Discordu**.")
+    @commands.Cog.listener()
+    async def on_member_update(self, before, after):
+        print(f"Member {after.name} updated their info.")
+
+        if len(before.roles) > len(after.roles):
+            print(f"Role {set(before.roles).difference(set(after.roles)).pop().name} deleted")
+            changed_role = set(before.roles).difference(set(after.roles)).pop().name
+            self.groups[changed_role]['members'].remove(after.name)
+        elif len(before.roles) < len(after.roles):
+            print(f"Role {set(after.roles).difference(set(before.roles)).pop().name} added")
+            changed_role = set(after.roles).difference(set(before.roles)).pop().name
+            self.groups[changed_role]['members'].add(after.name)
+
+    async def get_user_group_membership(self):
+        print("Assigning members to their groups")
+        self.bot.get_channel
+        for group in self.groups:
+            role = discord.utils.get(self.eforce_server.roles, name=group)
+            for member in self.eforce_server.members:
+                if role in member.roles:
+                    self.groups[group]['members'].add(member.name)
