@@ -46,6 +46,7 @@ class VoiceChatPresenceBot(commands.Cog):
             self.ids = json.load(f)
 
     @commands.command()
+    @commands.has_any_role('Illuminati', 'Vedouci', 'Správce Discordu')
     async def export_xlsx(self, ctx, *args):
         """Exports xlsx attendance file of given group
 
@@ -126,6 +127,7 @@ class VoiceChatPresenceBot(commands.Cog):
                 await self.record_meeting_activity(group)
 
     @commands.command()
+    @commands.has_any_role('Illuminati', 'Vedouci', 'Správce Discordu')
     async def start(self, ctx, *args):
         """Starts members presence
 
@@ -168,6 +170,7 @@ class VoiceChatPresenceBot(commands.Cog):
                 await author.send(f'Wrong group name: {group_name}')
 
     @commands.command()
+    @commands.has_any_role('Illuminati', 'Vedouci', 'Správce Discordu')
     async def stop(self, ctx, *args):
         """Stops members presence
 
@@ -204,3 +207,10 @@ class VoiceChatPresenceBot(commands.Cog):
                 self.dataAggregator.update_attendance(group)
             else:
                 await author.send(f'Wrong group name: {group_name}')
+
+    @commands.Cog.listener()
+    async def on_command_error(self, ctx, error):
+        print(ctx)
+        if isinstance(error, commands.MissingAnyRole):
+            await ctx.channel.send("I do not answer to peasants like you.\n"
+                                   "Came back when you become **Illuminati**, **Vedouci** or **Správce Discordu**.")
