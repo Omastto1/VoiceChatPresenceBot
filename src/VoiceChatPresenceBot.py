@@ -20,7 +20,7 @@ class VoiceChatPresenceBot(commands.Cog):
         self.bot = bot
         self.dataAggregator = DataAggregator(groups.keys())
         self.ids = {}
-        self._last_member = self.main_author = None
+        self.main_author = None
         self.groups = groups
         for group in self.groups:
             groups[group]['name'] = group
@@ -48,6 +48,19 @@ class VoiceChatPresenceBot(commands.Cog):
 
         with open(f"data/ids.json", 'r', encoding='utf-8') as f:
             self.ids = json.load(f)
+
+        await self.get_user_group_membership()
+
+        print(self.groups)
+
+    @commands.Cog.listener()
+    async def on_disconnect(self):
+        print("ERROR!")
+        await self.main_author.send("disconnected")
+
+    @commands.Cog.listener()
+    async def on_error(self):
+        print("ERROR!")
 
     @commands.command()
     @commands.has_any_role('Illuminati', 'Vedouci', 'Správce Discordu')
@@ -95,7 +108,8 @@ class VoiceChatPresenceBot(commands.Cog):
             if user not in self.groups[group_name]['absents_pinged']:
                 self.groups[group_name]['absents_pinged'].add(user)
                 disc_user = self.bot.get_user(self.ids[user])
-                asyncio.run_coroutine_threadsafe(disc_user.send("JE SCHUZE TY MAGORE, UZ SI TAM MEL 3 MINUTY BEJT!"), _loop)
+                asyncio.run_coroutine_threadsafe(disc_user.send("JE SCHUZE TY MAGORE, UZ SI TAM MEL 3 MINUTY BEJT!"),
+                                                 _loop)
 
     def record_meeting_activity(self, group):
         """Record presence/absence of users in voice chat meeting
@@ -195,7 +209,8 @@ class VoiceChatPresenceBot(commands.Cog):
                 group['is_running'] = False
                 print(f"vypinam is running: {group['is_running']}")
 
-                is_running = np.array([self.groups[temp_group_name]['is_running'] for temp_group_name in self.groups.keys()])
+                is_running = np.array(
+                    [self.groups[temp_group_name]['is_running'] for temp_group_name in self.groups.keys()])
 
                 if not np.any(is_running):
                     self.my_background_task.cancel()
@@ -214,10 +229,10 @@ class VoiceChatPresenceBot(commands.Cog):
 
     @commands.Cog.listener()
     async def on_command_error(self, ctx, error):
-        print(ctx)
         if isinstance(error, commands.MissingAnyRole):
             await ctx.channel.send("I do not answer to peasants like you.\n"
                                    "Came back when you become **Illuminati**, **Vedouci** or **Správce Discordu**.")
+
     @commands.Cog.listener()
     async def on_member_update(self, before, after):
         print(f"Member {after.name} updated their info.")
